@@ -216,6 +216,26 @@ if ($promptIds) {
 <script>
 const BASE_PATH = '<?= BASE_PATH ?>';
 const BASE_URL = '<?=SITE_URL?>';
+// Hàm hỗ trợ copy clipboard, fallback cho trình duyệt không hỗ trợ navigator.clipboard
+function copyTextToClipboard(text) {
+  // Sử dụng Clipboard API nếu có
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+  // Fallback cho các trình duyệt cũ
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'absolute';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    document.execCommand('copy');
+  } catch (err) {}
+  document.body.removeChild(textarea);
+  return Promise.resolve();
+}
 // Xem chi tiết prompt free
 function viewPrompt(id) {
     fetch(BASE_PATH + 'api/prompt_detail_modal.php?id=' + id)
@@ -232,10 +252,10 @@ function closeViewPrompt() {
 }
 // Copy prompt code trong modal
 function copyPromptCode() {
-    let code = document.getElementById('prompt-view-code');
+    const code = document.getElementById('prompt-view-code');
     if (!code) return;
-    navigator.clipboard.writeText(code.innerText).then(function() {
-        showToastCopy();
+    copyTextToClipboard(code.innerText).then(function() {
+      showToastCopy();
     });
 }
 // Toast copy
@@ -254,8 +274,9 @@ function showToastCopy() {
 }
 function copyPromptShareLink(id) {
     const url = BASE_URL + 'prompts.php?id=' + id;
-    navigator.clipboard.writeText(url);
-    alert('Đã copy link chia sẻ!');
+    copyTextToClipboard(url).then(function() {
+      alert('Đã copy link chia sẻ!');
+    });
 }
 // Guest xem premium
 function showPremiumLocked() {

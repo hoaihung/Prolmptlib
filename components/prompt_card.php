@@ -38,7 +38,9 @@ $needPremium = !empty($pr['premium']) && !$isAdmin && !$isPremium;
     </div>
     <div class="flex flex-wrap gap-2 mb-1">
         <span class="bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full text-xs"><?= htmlspecialchars($pr['category_name']) ?></span>
-        <?php foreach($pr['tags'] as $tag): ?>
+        <?php
+        // Một số trang có thể không truyền biến tags cho prompt, tránh lỗi undefined key
+        foreach (($pr['tags'] ?? []) as $tag): ?>
             <span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs"><?= htmlspecialchars($tag) ?></span>
         <?php endforeach; ?>
     </div>

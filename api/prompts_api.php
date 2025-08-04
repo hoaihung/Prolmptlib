@@ -5,6 +5,55 @@ header('Content-Type: application/json');
 
 $action = $_GET['action'] ?? '';
 
+// ========= BATCH ADD PROMPT =========
+// Xử lý thêm nhiều prompt bằng JSON. Phải đặt trước xử lý POST để tránh bị bắt bởi block thêm/sửa thông thường.
+if ($action === 'batch_add' && $_SERVER['REQUEST_METHOD'] === 'POST' && is_admin()) {
+    // Đọc dữ liệu JSON gửi lên
+    $input = json_decode(file_get_contents("php://input"), true);
+    $prompts = $input['prompts'] ?? [];
+    $success = 0;
+    $error = '';
+    foreach ($prompts as $pr) {
+        try {
+            $title        = $pr['title'] ?? '';
+            $category_id  = intval($pr['category_id'] ?? 0);
+            $description  = $pr['description'] ?? '';
+            $content      = $pr['content'] ?? '';
+            $tags         = $pr['tags'] ?? [];
+            $console_flag = !empty($pr['console_enabled']) ? 1 : 0;
+            $premium_flag = !empty($pr['premium']) ? 1 : 0;
+            $author_id    = $_SESSION['user_id'];
+            // Bỏ qua prompt thiếu tiêu đề hoặc nội dung
+            if (!$title || !$content) continue;
+            // Thêm prompt vào bảng
+            $stmt = $pdo->prepare("INSERT INTO prompts (title,category_id,description,content,author_id,console_enabled,premium,is_active,is_approved,created_at) VALUES (?,?,?,?,?,?,?,?,?,NOW())");
+            $stmt->execute([
+                $title,
+                $category_id,
+                $description,
+                $content,
+                $author_id,
+                $console_flag,
+                $premium_flag,
+                1, // is_active
+                1  // is_approved (có thể đặt lại tuỳ theo yêu cầu)
+            ]);
+            $prompt_id = $pdo->lastInsertId();
+            // Gán tags nếu truyền vào
+            if (!empty($tags) && is_array($tags)) {
+                foreach ($tags as $tag_id) {
+                    $pdo->prepare("INSERT INTO prompt_tags (prompt_id, tag_id) VALUES (?,?)")->execute([$prompt_id, intval($tag_id)]);
+                }
+            }
+            $success++;
+        } catch (Exception $ex) {
+            $error .= "\n" . $ex->getMessage();
+        }
+    }
+    echo json_encode(['success' => $success, 'error' => $error]);
+    exit;
+}
+
 // Lấy prompt để sửa (GET)
 if ($action === 'get' && isset($_GET['id'])) {
     $id = intval($_GET['id']);
@@ -116,52 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-if ($_GET['action'] === 'batch_add' && is_admin()) {
-    $input = json_decode(file_get_contents("php://input"), true);
-    $prompts = $input['prompts'] ?? [];
-    $success = 0; $error = '';
-    foreach ($prompts as $pr) {
-        try {
-            $title = $pr['title'] ?? '';
-            $category_id = intval($pr['category_id'] ?? 0);
-            $description = $pr['description'] ?? '';
-            $content = $pr['content'] ?? '';
-            $tags = $pr['tags'] ?? [];
-            $console_enabled = !empty($pr['console_enabled']) ? 1 : 0;
-            $premium = !empty($pr['premium']) ? 1 : 0;
-            $author_id = $_SESSION['user_id'];
-            // VALIDATE
-            if (!$title || !$content) continue;
-
-            // Insert prompt
-            $stmt = $pdo->prepare("INSERT INTO prompts (title,category_id,description,content,author_id,console_enabled,premium,is_active,is_approved,created_at) VALUES (?,?,?,?,?,?,?,?,?,NOW())");
-            $stmt->execute([
-                $title,
-                $category_id,
-                $description,
-                $content,
-                $author_id,
-                $console_enabled,
-                $premium,
-                1, // is_active
-                1  // is_approved (hoặc 0 nếu cần duyệt)
-            ]);
-            $prompt_id = $pdo->lastInsertId();
-
-            // Gán tags nếu có (giả sử tags là array id tag)
-            if (!empty($tags) && is_array($tags)) {
-                foreach ($tags as $tag_id) {
-                    $pdo->prepare("INSERT INTO prompt_tags (prompt_id, tag_id) VALUES (?,?)")->execute([$prompt_id, intval($tag_id)]);
-                }
-            }
-            $success++;
-        } catch (Exception $ex) {
-            $error .= "\n" . $ex->getMessage();
-        }
-    }
-    echo json_encode(['success' => $success, 'error' => $error]);
-    exit;
-}
+// (Đã xử lý batch_add ở đầu file để tránh xung đột với POST)
 
 
 // Lock Prompt

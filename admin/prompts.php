@@ -127,15 +127,28 @@ include 'layout.php';
 
 <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-bold">Danh sách Prompt</h2>
-    <?php if (is_admin() || is_root() || user_role()==='premium'): ?>
-        <?php $premium_create_enable = get_site_setting('enable_premium_create') == 1;
-            if (is_admin() || is_root() || (user_role()==='premium' && $premium_create_enable)): ?>
-                <div>
-                    <button onclick="openPromptModal()" class="bg-blue-600 text-white px-4 py-2 rounded-xl">+ Thêm Prompt</button>
-                    <button onclick="openBatchAddPromptModal()" class="bg-blue-600 text-white px-4 py-2 rounded-xl">Batch Add Prompt</button>
-                </div>
-        <?php endif; ?>
-    <?php endif; ?>
+    <?php
+    /**
+     * Hiển thị các nút thêm prompt.
+     * - Admin hoặc root có thể thêm một prompt hoặc nhiều prompt (batch).
+     * - Tài khoản premium chỉ được phép thêm một prompt khi thiết lập cho phép.
+     */
+    if (is_admin() || is_root()) {
+        // Quản trị và root được phép tạo một hoặc nhiều prompt cùng lúc
+        echo '<div>';
+        echo '<button onclick="openPromptModal()" class="bg-blue-600 text-white px-4 py-2 rounded-xl mr-2">+ Thêm Prompt</button>';
+        echo '<button onclick="openBatchAddPromptModal()" class="bg-blue-600 text-white px-4 py-2 rounded-xl">Thêm Nhiều Prompt</button>';
+        echo '</div>';
+    } elseif (user_role() === 'premium') {
+        // Kiểm tra cài đặt cho phép premium tạo prompt
+        $premium_create_enable = get_site_setting('enable_premium_create') == 1;
+        if ($premium_create_enable) {
+            echo '<div>';
+            echo '<button onclick="openPromptModal()" class="bg-blue-600 text-white px-4 py-2 rounded-xl">+ Thêm Prompt</button>';
+            echo '</div>';
+        }
+    }
+    ?>
 </div>
 <!-- FORM FILTER -->
 <form method="get" class="mb-4 flex flex-wrap gap-2 items-center">
@@ -263,11 +276,26 @@ foreach ($prompts as $pr) {
     </div>
 </div>
 
-<!-- Modal batch add prompt -->
+<!-- Modal: thêm nhiều prompt theo định dạng JSON -->
 <div id="batch-add-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center">
-  <div class="bg-white p-6 rounded-xl shadow-xl w-[600px] max-w-full">
-    <h3 class="text-xl font-bold mb-4">Batch Add Prompt (Nhập JSON)</h3>
-    <textarea id="batch-prompt-json" rows="12" class="w-full border p-2 mb-4" placeholder='[
+  <div class="bg-white p-6 rounded-xl shadow-xl w-[600px] max-w-full relative">
+    <!-- nút X đóng modal -->
+    <button type="button" onclick="closeBatchAddPromptModal()" class="absolute top-2 right-3 text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+    <h3 class="text-xl font-bold mb-2">Thêm Nhiều Prompt (Nhập JSON)</h3>
+    <!-- nút xem demo JSON -->
+    <button type="button" onclick="toggleDemoJson()" class="text-blue-600 underline mb-2">Xem ví dụ JSON</button>
+    <pre id="demo-json" class="bg-gray-100 border border-gray-200 p-3 rounded mb-4 hidden text-sm overflow-auto whitespace-pre-wrap">[
+  {
+    "title": "Tóm tắt văn bản",
+    "category_id": 1,
+    "description": "Tóm tắt nhanh đoạn văn...",
+    "content": "Hãy tóm tắt đoạn văn này: {{input}}",
+    "tags": [1, 2],
+    "console_enabled": true,
+    "premium": false
+  }
+]</pre>
+    <textarea id="batch-prompt-json" rows="12" class="w-full border rounded p-2 mb-4" placeholder='[
   {
     "title": "Tóm tắt văn bản",
     "category_id": 1,
@@ -280,8 +308,8 @@ foreach ($prompts as $pr) {
 ]'></textarea>
     <div id="batch-add-result" class="mb-3 text-green-600 font-bold hidden"></div>
     <div class="flex justify-end gap-2">
-      <button onclick="closeBatchAddPromptModal()" class="btn">Đóng</button>
-      <button onclick="submitBatchAddPrompt()" class="btn btn-success">Thêm Hàng Loạt</button>
+      <button type="button" onclick="closeBatchAddPromptModal()" class="bg-gray-500 text-white px-4 py-2 rounded">Đóng</button>
+      <button type="button" onclick="submitBatchAddPrompt()" class="bg-blue-600 text-white px-4 py-2 rounded">Thêm Hàng Loạt</button>
     </div>
   </div>
 </div>
@@ -292,6 +320,24 @@ foreach ($prompts as $pr) {
 <script>
 const BASE_PATH = '<?= BASE_PATH ?>';
 const BASE_URL = '<?=SITE_URL?>';
+// Hàm hỗ trợ copy clipboard, fallback cho trình duyệt không hỗ trợ navigator.clipboard
+function copyTextToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+    }
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'absolute';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        document.execCommand('copy');
+    } catch (err) {}
+    document.body.removeChild(textarea);
+    return Promise.resolve();
+}
 // placeholder các hàm js
 // Thêm vào <script> cuối prompts.php
 
@@ -384,6 +430,17 @@ function submitBatchAddPrompt() {
     .catch(e => alert("Có lỗi khi gửi dữ liệu: " + e));
 }
 
+// Hiển thị/ẩn ví dụ JSON nhập vào trong modal batch add
+function toggleDemoJson() {
+    const el = document.getElementById('demo-json');
+    if (!el) return;
+    if (el.classList.contains('hidden')) {
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
+    }
+}
+
 
 
 function editPrompt(id){}
@@ -424,9 +481,9 @@ function closeViewPrompt() {
     root.innerHTML = '';
 }
 function copyPromptCode() {
-    let code = document.getElementById('prompt-view-code');
+    const code = document.getElementById('prompt-view-code');
     if (!code) return;
-    navigator.clipboard.writeText(code.innerText).then(function() {
+    copyTextToClipboard(code.innerText).then(function() {
         showToastCopy();
     });
 }
@@ -461,8 +518,9 @@ function toggleFavorite(prompt_id, btn){
 
 function copyPromptShareLink(id) {
     const url = BASE_URL + 'prompts.php?id=' + id;
-    navigator.clipboard.writeText(url);
-    alert('Đã copy link chia sẻ!');
+    copyTextToClipboard(url).then(function() {
+        alert('Đã copy link chia sẻ!');
+    });
 }
 
 function lockPrompt(id) {
