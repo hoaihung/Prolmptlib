@@ -6,6 +6,11 @@ $is_guest = !is_logged_in();
 $is_premium = is_premium() || is_admin() || is_root();
 $is_admin = is_admin() || is_root();
 
+// Variables for prompt_card.php
+$isAdmin = $is_admin;
+$isPremium = $is_premium;
+$isPublic = true;
+
 
 // Query filter search/category/type nếu muốn
 $where = "p.is_active=1 AND p.is_deleted=0 AND p.is_approved=1 AND p.is_locked=0";
@@ -18,7 +23,7 @@ if (!empty($_GET['category'])) {
 if (!empty($_GET['type'])) {
     if ($_GET['type']==='free')     $where .= " AND p.premium=0";
     if ($_GET['type']==='premium')  $where .= " AND p.premium=1";
-    if ($_GET['type']==='console')  $where .= " AND p.console_enabled=1";
+
 }
 if (!empty($_GET['tag'])) {
     $where .= " AND EXISTS (SELECT 1 FROM prompt_tags pt WHERE pt.prompt_id=p.id AND pt.tag_id=?)";
@@ -66,10 +71,10 @@ $promptIds = array_column($prompts, 'id');
 if ($promptIds) {
   $in = implode(',', array_fill(0, count($promptIds), '?'));
   $tagMap = [];
-  $tagQ = $pdo->prepare("SELECT pt.prompt_id, t.name FROM prompt_tags pt JOIN tags t ON pt.tag_id = t.id WHERE pt.prompt_id IN ($in)");
+  $tagQ = $pdo->prepare("SELECT pt.prompt_id, t.id, t.name FROM prompt_tags pt JOIN tags t ON pt.tag_id = t.id WHERE pt.prompt_id IN ($in)");
   $tagQ->execute($promptIds);
   foreach ($tagQ as $row) {
-    $tagMap[$row['prompt_id']][] = $row['name'];
+    $tagMap[$row['prompt_id']][] = ['id' => $row['id'], 'name' => $row['name']];
   }
   foreach ($prompts as &$pr) {
     $pr['tags'] = $tagMap[$pr['id']] ?? [];
@@ -138,7 +143,7 @@ if ($promptIds) {
       <?php endforeach; ?>
       <button class="filter-btn px-4 py-1.5 rounded-xl border border-blue-100 bg-white text-gray-700 transition hover:bg-blue-50 focus:outline-none <?= (($_GET['type']??'')==='free') ? 'bg-blue-100 border-blue-500 text-blue-800 font-semibold' : '' ?>" data-filter="type" data-value="free">Free</button>
       <button class="filter-btn px-4 py-1.5 rounded-xl border border-blue-100 bg-white text-gray-700 transition hover:bg-blue-50 focus:outline-none <?= (($_GET['type']??'')==='premium') ? 'bg-blue-100 border-blue-500 text-blue-800 font-semibold' : '' ?>" data-filter="type" data-value="premium">Premium</button>
-      <button class="filter-btn px-4 py-1.5 rounded-xl border border-blue-100 bg-white text-gray-700 transition hover:bg-blue-50 focus:outline-none <?= (($_GET['type']??'')==='console') ? 'bg-blue-100 border-blue-500 text-blue-800 font-semibold' : '' ?>" data-filter="type" data-value="console">Console</button>
+
       <?php foreach($tags as $tag): ?>
         <button class="filter-btn px-4 py-1.5 rounded-xl border border-purple-100 bg-white text-purple-700 hover:bg-purple-50 focus:outline-none <?= (($_GET['tag']??'')==$tag['id']) ? 'bg-purple-100 border-purple-500 text-purple-800 font-semibold' : '' ?>" data-filter="tag" data-value="<?= $tag['id'] ?>">
           #<?= htmlspecialchars($tag['name']) ?>
@@ -162,16 +167,10 @@ if ($promptIds) {
         <a href="request_prompt.php" class="mt-4 inline-block bg-pink-600 text-white font-bold px-5 py-2 rounded-xl hover:bg-pink-700 transition shadow">Yêu cầu Prompt riêng</a>
       </div>
     <?php else: ?>
-      <?php 
-        $isAdmin = is_admin() || is_root();
-        $isPremium = user_role() === 'premium'; // Chuẩn hóa theo hàm role của bạn
-        $isPublic = true;
-     ?>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         <?php foreach ($prompts as $pr): 
           $isOwner = isset($pr['author_id']) && $pr['author_id'] == $user_id;
           $isTrash = !empty($pr['is_deleted']);
-         // echo $pr['category_id'] & ' | ' & $catColors[$pr['category_id']];
           $cardClass = $catColors[$pr['category_id']] ?? 'bg-white border-gray-200 text-gray-800';
           include 'components/prompt_card.php';
         endforeach; ?>
@@ -325,10 +324,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Lấy id trên URL nếu có
     const urlParams = new URLSearchParams(window.location.search);
     const pid = urlParams.get('id');
-    if (pid && /^\d+$/.test(pid)) { // Chỉ mở nếu id là số hợp lệ
-        setTimeout(()=>viewPrompt(pid), 300); // Delay 1 chút để page render xong
-        // Đẩy lại url về không có id nếu muốn, hoặc giữ nguyên để copy link share
-        // window.history.replaceState(null, '', 'prompts.php');
+    if (pid && /^\d+$/.test(pid)) {
+        // Redirect to new detail page
+        window.location.href = '<?=SITE_URL?>prompt/' + pid;
     }
 });
 

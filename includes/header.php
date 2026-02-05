@@ -14,7 +14,11 @@ if ($user_id) {
 <html lang="vi">
 <head>
   <meta charset="utf-8">
-  <title>PromptLib – Kho Prompt Public</title>
+  <title><?= $page_title ?? 'PromptLib – Kho Prompt Public' ?></title>
+  <meta name="description" content="<?= $page_desc ?? 'Thư viện Prompt AI công khai, chia sẻ prompt ChatGPT, Gemini, Midjourney...' ?>">
+  <?php if(isset($og_image)): ?>
+  <meta property="og:image" content="<?= $og_image ?>">
+  <?php endif; ?>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -45,14 +49,22 @@ if ($user_id) {
   <!-- Main Menu desktop -->
   <?php $menu = json_decode(get_site_setting('menu_main'), true) ?? []; ?>
   <nav class="hidden md:flex gap-3 ml-6 flex-1">
-    <?php foreach($menu as $item): if(empty($item['active'])) continue; ?>
-      <a href="<?= htmlspecialchars($item['url']) ?>" class="px-3 py-2 hover:text-blue-600"><?= htmlspecialchars($item['label']) ?></a>
+    <?php foreach($menu as $item): if(empty($item['active'])) continue; 
+        $mUrl = $item['url'];
+        if (!preg_match('/^https?:\/\//', $mUrl)) {
+            $mUrl = SITE_URL . ltrim($mUrl, '/');
+        }
+    ?>
+      <a href="<?= htmlspecialchars($mUrl) ?>" class="px-3 py-2 hover:text-blue-600"><?= htmlspecialchars($item['label']) ?></a>
     <?php endforeach ?>
+    <a href="<?=SITE_URL?>news" class="px-3 py-2 hover:text-blue-600">Tin tức</a>
   </nav>
 
   <!-- User/Avatar/Action -->
   <?php if(is_logged_in()): ?>
-  <div class="relative flex-shrink-0" id="user-avatar-box">
+  <div class="flex items-center gap-3">
+    <a href="<?=SITE_URL?>my-prompts" class="hidden md:block bg-blue-50 text-blue-700 px-3 py-2 rounded-lg font-medium hover:bg-blue-100 transition">Prompt của tôi</a>
+    <div class="relative flex-shrink-0" id="user-avatar-box">
     <button id="avatar-btn" class="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center text-lg font-bold focus:outline-none"><?= strtoupper(substr($_SESSION['user_name'],0,1)) ?></button>
     <?php if ($count_unread > 0): ?>
       <span class="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"><?= $count_unread ?></span>
@@ -85,13 +97,20 @@ if ($user_id) {
 <div id="mobile-menu" class="fixed inset-0 z-40 bg-black bg-opacity-40 hidden md:hidden">
   <div class="bg-white w-60 min-h-full p-6 shadow-lg">
     <button onclick="toggleMobileMenu()" class="text-xl mb-4">&times;</button>
-    <?php foreach($menu as $item): if(empty($item['active'])) continue; ?>
-      <a href="<?= htmlspecialchars($item['url']) ?>" class="block px-3 py-2 mb-2 rounded hover:bg-blue-50"><?= htmlspecialchars($item['label']) ?></a>
+    <?php foreach($menu as $item): if(empty($item['active'])) continue; 
+        $mUrl = $item['url'];
+        if (!preg_match('/^https?:\/\//', $mUrl)) {
+            $mUrl = SITE_URL . ltrim($mUrl, '/');
+        }
+    ?>
+      <a href="<?= htmlspecialchars($mUrl) ?>" class="block px-3 py-2 mb-2 rounded hover:bg-blue-50"><?= htmlspecialchars($item['label']) ?></a>
     <?php endforeach ?>
+    <a href="<?=SITE_URL?>news" class="block px-3 py-2 mb-2 rounded hover:bg-blue-50">Tin tức</a>
     <hr class="my-2">
     <?php if(is_logged_in()): ?>
       <div class="font-semibold mb-1"><?= htmlspecialchars($_SESSION['user_name']) ?></div>
       <div class="text-xs text-gray-500 mb-3"><?= htmlspecialchars($_SESSION['user_role']) ?></div>
+      <a href="<?=SITE_URL?>my-prompts" class="block px-3 py-2 hover:bg-gray-100 font-semibold text-blue-700">Prompt của tôi</a>
       <a href="<?=SITE_URL?>admin/notifications.php" class="block px-3 py-2 hover:bg-gray-100">Thông báo</a>
       <a href="<?=SITE_URL?>admin/" class="block px-3 py-2 hover:bg-gray-100">Quản trị</a>
       <a href="<?=SITE_URL?>admin/profiles.php" class="block px-3 py-2 hover:bg-gray-100">Cài đặt cá nhân</a>

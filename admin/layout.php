@@ -14,26 +14,21 @@ $navGroups = [
         ['label'=>'Prompts Pending', 'href'=>'prompts_pending.php', 'role'=>'admin'],
         ['label'=>'Prompts Trash', 'href'=>'prompts_trash.php', 'role'=>'premium'],
         ['label'=>'Prompts Request', 'href'=>'request_prompts.php', 'role'=>'admin'],
-        ['label'=>'Console', 'href'=>'console.php', 'role'=>'user'],
+        ['label'=>'Tags', 'href'=>'tags.php', 'role'=>'user'],
+        ['label'=>'Bình luận', 'href'=>'comments.php', 'role'=>'user'],
     ],
-    'Danh mục & Cấu hình' => [
-        ['label'=>'Categories', 'href'=>'categories.php', 'role'=>'admin'],
-        ['label'=>'Tags', 'href'=>'tags.php', 'role'=>'admin'],
-        ['label'=>'Page Module', 'href'=>'modules_manager.php', 'role'=>'admin'],
-        ['label'=>'Profiles', 'href'=>'profiles.php', 'role'=>'user'],  
-        ['label'=>'Settings', 'href'=>'site_setting.php', 'role'=>'admin'],
+    'Nội dung' => [
+        ['label'=>'Tin tức', 'href'=>'news.php', 'role'=>'user'],
+        ['label'=>'Pages (CMS)', 'href'=>'pages.php', 'role'=>'admin'],
+        ['label'=>'Widgets', 'href'=>'widgets.php', 'role'=>'admin'],
+        ['label'=>'Cài đặt', 'href'=>'site_setting.php', 'role'=>'root'],
     ],
 ];
 
 // Helper kiểm tra quyền
-/*function has_role($role) {
-    if (!$role) return true;
-    if ($role === 'admin') return is_admin() || is_root();
-    if ($role === 'root') return is_root();
-    if ($role === 'premium') return user_role() === 'premium' || is_admin() || is_root();
-    if ($role === 'user') return is_logged_in();
-    return false;
-}*/
+// Helper kiểm tra quyền
+// has_role() is already defined in includes/auth.php
+
 ?>
 <!DOCTYPE html>
 <html lang="vi">

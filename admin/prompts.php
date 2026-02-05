@@ -136,7 +136,7 @@ include 'layout.php';
     if (is_admin() || is_root()) {
         // Quản trị và root được phép tạo một hoặc nhiều prompt cùng lúc
         echo '<div>';
-        echo '<button onclick="openPromptModal()" class="bg-blue-600 text-white px-4 py-2 rounded-xl mr-2">+ Thêm Prompt</button>';
+        echo '<a href="prompts_edit.php" class="bg-blue-600 text-white px-4 py-2 rounded-xl mr-2 inline-block">+ Thêm Prompt</a>';
         echo '<button onclick="openBatchAddPromptModal()" class="bg-blue-600 text-white px-4 py-2 rounded-xl">Thêm Nhiều Prompt</button>';
         echo '</div>';
     } elseif (user_role() === 'premium') {
@@ -144,7 +144,7 @@ include 'layout.php';
         $premium_create_enable = get_site_setting('enable_premium_create') == 1;
         if ($premium_create_enable) {
             echo '<div>';
-            echo '<button onclick="openPromptModal()" class="bg-blue-600 text-white px-4 py-2 rounded-xl">+ Thêm Prompt</button>';
+            echo '<a href="../my-prompts/create" class="bg-blue-600 text-white px-4 py-2 rounded-xl inline-block">+ Thêm Prompt</a>';
             echo '</div>';
         }
     }
@@ -251,6 +251,19 @@ foreach ($prompts as $pr) {
                 <label class="font-semibold">Nội dung Prompt (code/text)</label>
                 <textarea name="content" id="prompt-content" rows="5" class="w-full border rounded px-2 py-1" required></textarea>
             </div>
+            <div class="mb-3">
+                <label class="font-semibold">Thumbnail (Ảnh đại diện)</label>
+                <input type="file" name="thumbnail" id="prompt-thumbnail" class="w-full border rounded px-2 py-1" accept="image/*">
+                <div id="current-thumbnail" class="mt-2 hidden">
+                    <img src="" class="h-20 w-auto rounded border">
+                </div>
+            </div>
+            <?php if(is_admin() || is_root()): ?>
+            <div class="mb-3">
+                <label class="font-semibold">Admin Content (SEO/Bài viết)</label>
+                <textarea name="admin_content" id="prompt-admin-content" rows="4" class="w-full border rounded px-2 py-1" placeholder="Nội dung bài viết SEO..."></textarea>
+            </div>
+            <?php endif; ?>
             <div class="mb-3 grid grid-cols-2 gap-4">
                 <div>
                     <label class="font-semibold">Tags</label>
@@ -363,6 +376,7 @@ function openPromptModal(id = null) {
     document.getElementById('prompt-form').reset();
     document.getElementById('prompt-id').value = '';
     document.getElementById('prompt-request-id').value = '';
+    document.getElementById('current-thumbnail').classList.add('hidden');
 
     if (id) {
         fetch(BASE_PATH + '../api/prompts_api.php?action=get&id='+id)
@@ -375,6 +389,18 @@ function openPromptModal(id = null) {
             document.getElementById('prompt-content').value = pr.content;
             document.getElementById('prompt-console').checked = pr.console_enabled==1;
             document.getElementById('prompt-premium').checked = pr.premium==1;
+            
+            // Thumbnail
+            if(pr.thumbnail) {
+                document.querySelector('#current-thumbnail img').src = BASE_URL + pr.thumbnail;
+                document.getElementById('current-thumbnail').classList.remove('hidden');
+            } else {
+                document.getElementById('current-thumbnail').classList.add('hidden');
+            }
+            
+            // Admin Content
+            const adminContentEl = document.getElementById('prompt-admin-content');
+            if(adminContentEl) adminContentEl.value = pr.admin_content || '';
             
             // ===== XỬ LÝ TAG =====
             if (choicesPromptTags && pr.tags) {

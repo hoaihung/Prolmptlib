@@ -1,46 +1,45 @@
 <?php
 require_once 'includes/loader.php';
-require_once 'includes/svg.php';
+require_once 'includes/svg.php'; // Included here as it was in original index.php
+require_once 'app/Router.php';
 
-$modules = $pdo->query("SELECT * FROM home_modules WHERE is_active=1 AND (location='home' OR location='all') ORDER BY sort_order ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC);
+$router = new Router();
+
+// Define routes
+$router->add('GET', '/', ['HomeController', 'index']);
+$router->add('GET', '/index.php', ['HomeController', 'index']);
+$router->add('GET', '/prompt/{id}', ['PromptController', 'detail']);
+$router->add('GET', '/news', ['NewsController', 'index']);
+$router->add('GET', '/news/{slug}', ['NewsController', 'detail']);
+$router->add('GET', '/my-prompts', ['MyPromptController', 'index']);
+$router->add('GET', '/my-prompts/create', ['MyPromptController', 'create']);
+$router->add('POST', '/my-prompts/store', ['MyPromptController', 'store']);
+$router->add('GET', '/my-prompts/edit/{id}', ['MyPromptController', 'edit']);
+$router->add('POST', '/my-prompts/update/{id}', ['MyPromptController', 'update']);
+$router->add('GET', '/my-prompts/delete/{id}', ['MyPromptController', 'delete']);
+$router->add('POST', '/comments/store', ['CommentController', 'store']);
+$router->add('GET', '/page/{slug}', ['PageController', 'show']);
+
+// Dispatch
+// Fix URI for localhost/subfolder if needed, but assuming root for now based on typical setup
+// If user is in /promptlib/, we might need to strip that.
+// But Router.php logic: $uri = parse_url($uri, PHP_URL_PATH);
+// If URI is /promptlib/, regex #^/$# won't match.
+// Let's adjust Router or URI here.
+// For now, let's assume root. If it fails, we fix.
+// Actually, user path is c:/Users/.../promptlib. It's likely a local dev setup.
+// If they run `php -S localhost:8000`, it's root.
+// If they use XAMPP/WAMP, it might be /promptlib/.
+// I'll make the Router more flexible or handle it here.
+// Let's try to detect base path.
+
+$uri = $_SERVER['REQUEST_URI'];
+$method = $_SERVER['REQUEST_METHOD'];
+
+// Handle query string in URI for Router? Router uses parse_url(PHP_URL_PATH), so query string is stripped.
+// But if URI is /index.php?page=home, Router sees /index.php.
+// If URI is /?page=home, Router sees /.
+// This matches our routes.
+
+$router->dispatch($uri, $method);
 ?>
-
-<?php include 'includes/header.php'; ?>
-<main class="max-w-6xl mx-auto mt-4 p-3">
-  <?php 
-    $page_slug = $_GET['page'] ?? 'home';
-    $stmt = $pdo->prepare("SELECT id FROM pages WHERE slug=? AND is_active=1 LIMIT 1");
-    $stmt->execute([$page_slug]);
-    $page = $stmt->fetch();
-
-    if (!$page) {
-        // Nếu không tìm thấy page, fallback về home
-        if ($page_slug !== 'home') {
-            $stmt = $pdo->prepare("SELECT * FROM pages WHERE slug='home' AND is_active=1 LIMIT 1");
-            $stmt->execute();
-            $page = $stmt->fetch();
-        }
-        // Nếu vẫn không có, báo lỗi
-        if (!$page) die('Không tìm thấy trang chủ!');
-    }
-
-    $page_id = $page['id'];
-    
-    if (!$page_id) die("Trang không tồn tại hoặc bị ẩn!");
-    $modules = $pdo->prepare(
-      "SELECT m.* FROM page_modules pm 
-       JOIN modules m ON pm.module_id=m.id 
-       WHERE pm.page_id=? AND m.is_active=1
-       ORDER BY pm.sort_order ASC"
-    );
-    $modules->execute([$page_id]);
-    foreach ($modules as $mod) {
-        include 'components/module_'.$mod['type'].'.php'; // load từng module dạng component
-    }
-
-  ?>
-</main>
-
-</body>
-<?php require_once 'includes/premium_modal.php'; ?>
-<?php include 'includes/footer.php'; ?>

@@ -108,10 +108,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $console = isset($_POST['console_enabled']) ? 1 : 0;
     $premium = isset($_POST['premium']) ? 1 : 0;
     $tags = $_POST['tags'] ?? [];
+    
     // Quyền: chỉ premium thêm/sửa prompt cá nhân, admin/root full quyền
     $is_admin = is_admin() || is_root();
     $is_approved = $is_admin ? 1 : 0;
     $user_id = $_SESSION['user_id'];
+    $admin_content = ($is_admin) ? ($_POST['admin_content'] ?? '') : null;
+
+    // Handle Thumbnail Upload
+    $thumbnail = null;
+    if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
+        $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+        $ext = strtolower(pathinfo($_FILES['thumbnail']['name'], PATHINFO_EXTENSION));
+        if (in_array($ext, $allowed)) {
+            $filename = 'thumb_' . time() . '_' . uniqid() . '.' . $ext;
+            $target = '../uploads/thumbnails/' . $filename;
+            if (!is_dir('../uploads/thumbnails')) mkdir('../uploads/thumbnails', 0777, true);
+            if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $target)) {
+                $thumbnail = 'uploads/thumbnails/' . $filename;
+            }
+        }
+    }
+
     if ($id) {
         $q = $pdo->prepare("SELECT * FROM prompts WHERE id=? LIMIT 1");
         $q->execute([$id]);
@@ -119,8 +137,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$pr) exit(json_encode(['success'=>false,'message'=>'Prompt không tồn tại']));
         if (!$is_admin && $pr['author_id'] != $user_id)
             exit(json_encode(['success'=>false,'message'=>'Chỉ sửa prompt của bạn!']));
-        $pdo->prepare("UPDATE prompts SET title=?, description=?, content=?, category_id=?, console_enabled=?, premium=?, updated_at=NOW() WHERE id=?")
-            ->execute([$title, $desc, $content, $category_id, $console, $premium, $id]);
+        
+        // Update query
+        $sql = "UPDATE prompts SET title=?, description=?, content=?, category_id=?, console_enabled=?, premium=?, updated_at=NOW()";
+        $params = [$title, $desc, $content, $category_id, $console, $premium];
+        
+        if ($thumbnail) {
+            $sql .= ", thumbnail=?";
+            $params[] = $thumbnail;
+        }
+        if ($is_admin && $admin_content !== null) {
+            $sql .= ", admin_content=?";
+            $params[] = $admin_content;
+        }
+        
+        $sql .= " WHERE id=?";
+        $params[] = $id;
+
+        $pdo->prepare($sql)->execute($params);
+        
         $pdo->prepare("DELETE FROM prompt_tags WHERE prompt_id=?")->execute([$id]);
         foreach ($tags as $tagid) {
             $pdo->prepare("INSERT INTO prompt_tags (prompt_id, tag_id) VALUES (?,?)")->execute([$id, $tagid]);
@@ -129,9 +164,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         if (!$is_admin && user_role()!=='premium')
             exit(json_encode(['success'=>false,'message'=>'Bạn không có quyền thêm prompt']));
-        $pdo->prepare("INSERT INTO prompts (title, description, content, author_id, category_id, console_enabled, premium, created_at, updated_at, is_approved)
-               VALUES (?,?,?,?,?,?,?,NOW(),NOW(),?)")
-            ->execute([$title, $desc, $content, $user_id, $category_id, $console, $premium, $is_approved]);
+        
+        $sql = "INSERT INTO prompts (title, description, content, author_id, category_id, console_enabled, premium, created_at, updated_at, is_approved, thumbnail, admin_content)
+               VALUES (?,?,?,?,?,?,?,NOW(),NOW(),?,?,?)";
+        $pdo->prepare($sql)->execute([$title, $desc, $content, $user_id, $category_id, $console, $premium, $is_approved, $thumbnail, $admin_content]);
+        
         $pid = $pdo->lastInsertId();
         foreach ($tags as $tagid) {
             $pdo->prepare("INSERT INTO prompt_tags (prompt_id, tag_id) VALUES (?,?)")->execute([$pid, $tagid]);
