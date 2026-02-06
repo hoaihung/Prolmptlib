@@ -23,7 +23,7 @@ $actionUrl = $action_url ?? '';
             <div>
                 <label class="block font-semibold mb-2 text-gray-700">Nội dung Prompt <span class="text-red-500">*</span></label>
                 <div class="border rounded-xl overflow-hidden shadow-sm">
-                    <textarea id="prompt-content-editor" name="content" required class="w-full"><?= htmlspecialchars($p['content']??'') ?></textarea>
+                    <textarea id="prompt-content-editor" name="content" class="w-full"><?= htmlspecialchars($p['content']??'') ?></textarea>
                 </div>
                 <p class="text-xs text-gray-500 mt-1">Mẹo: Sử dụng <code>{{input}}</code> hoặc <code>{{topic}}</code> để tạo biến nhập liệu.</p>
             </div>
@@ -150,4 +150,19 @@ $actionUrl = $action_url ?? '';
             noResultsText: 'Không tìm thấy tag'
         });
     }
+
+    // Manual Validation & Sync before submit
+    const form = document.getElementById('prompt-form-shared');
+    form.addEventListener('submit', function(e) {
+        // Sync CodeMirror to Textarea
+        editor.save(); 
+        
+        const content = document.getElementById('prompt-content-editor').value.trim();
+        if (!content) {
+            e.preventDefault();
+            alert('Vui lòng nhập nội dung Prompt!');
+            // Focus common CodeMirror editor (optional, it doesn't have a simple .focus() sometimes depending on version)
+            editor.focus();
+        }
+    });
 </script>

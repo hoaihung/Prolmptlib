@@ -22,6 +22,15 @@ if ($user_id) {
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NSECF9V2NB"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-NSECF9V2NB');
+</script>
   <style>
     #user-menu { min-width:170px; box-shadow: 0 4px 24px 0 #0002; }
     #user-menu a { white-space: nowrap; }
